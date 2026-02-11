@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.venv/
+venv/
+Venv/
+venv.bak/
+.env
+.flaskenv
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.vscode/
+.history/
+
+# IDEs
+.idea/
+*.iml
+
+# OS
+.DS_Store
+.Trash/
+Thumbs.db
+
+# Docker
+Dockerfile.bak
+docker-compose.override.yml
+docker-compose.yml
+!docker-compose.yml # Keep it tracked
+*.stack
+*.log
+tmp/
+temp/
+
+# Alembic
+alembic/versions/*.pyc
+alembic/versions/__pycache__/
+
+# CI/CD
+.github/workflows/
+!petstore/.github/workflows/ci.yml # Keep ci.yml tracked
+
+# Config
+*.ini
+*.toml

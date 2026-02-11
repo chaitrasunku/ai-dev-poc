@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Database connection for the application
+      DATABASE_URL: postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}
+      # Other application settings, will be expanded in T_CORE_CONFIG
+      APP_NAME: Petstore API
+      DEBUG: "True" # Set to False for production
+      SECRET_KEY: "super-secret-key" # Placeholder, generate a strong one
+      ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+      ALGORITHM: "HS256"
+      ENVIRONMENT: "development"
+      LOG_LEVEL: "INFO"
+    depends_on:
+      - db
+    restart: on-failure
+    volumes:
+      - ./petstore/app:/app/app # Mount app code for live reloading during development
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:

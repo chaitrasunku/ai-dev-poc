@@ -1,0 +1,1 @@
+# This file marks the tests/contract directory as a Python package.

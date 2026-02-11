@@ -1,0 +1,129 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Black formatter check
+        run: black --check .
+
+      - name: Run Flake8 linter
+        run: flake8 .
+
+      - name: Run isort import sorter check
+        run: isort --check-only .
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: ${{ secrets.TEST_DB_NAME }}
+          POSTGRES_USER: ${{ secrets.TEST_DB_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+        ports:
+          - 5433:5432 # Map to a different port for test DB
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          for i in $(seq 1 10); do
+            nc -z localhost 5433 && break
+            echo "Waiting for PostgreSQL... ($i/10)"
+            sleep 5
+          done
+          pg_isready -h localhost -p 5433 -U ${{ secrets.TEST_DB_USER }}
+          echo "PostgreSQL is ready."
+
+      - name: Set up environment variables for tests
+        run: |
+          echo "DATABASE_URL=postgresql+asyncpg://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ secrets.DB_NAME }}" >> $GITHUB_ENV
+          echo "TEST_DATABASE_URL=postgresql+asyncpg://${{ secrets.TEST_DB_USER }}:${{ secrets.TEST_DB_PASSWORD }}@localhost:5433/${{ secrets.TEST_DB_NAME }}" >> $GITHUB_ENV
+          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> $GITHUB_ENV
+          echo "ENVIRONMENT=test" >> $GITHUB_ENV
+        env:
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          TEST_DB_USER: ${{ secrets.TEST_DB_USER }}
+          TEST_DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+          TEST_DB_NAME: ${{ secrets.TEST_DB_NAME }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+
+      - name: Run tests with coverage
+        run: pytest --cov=app --cov-report=xml petstore/tests/
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml # Path to coverage report
+          fail_ci_if_error: true # Optional: fail CI if Codecov reports an error
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }} # If using a private repo
+
+      # Optional: Enforce coverage threshold (can also be done via .coveragerc or Codecov settings)
+      - name: Check coverage threshold
+        run: |
+          coverage_percentage=$(python -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage.xml'); print(tree.find('.//coverage').attrib['line-rate'])")
+          required_coverage=0.80
+          echo "Current coverage: $coverage_percentage, Required: $required_coverage"
+          if (( $(echo "$coverage_percentage < $required_coverage" | bc -l) )); then
+            echo "Error: Code coverage is below the required 80%."
+            exit 1
+          fi
+
+  build_docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub (optional)
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: docker build . --file Dockerfile --tag petstore-app:latest
+
+      # Optional: Push Docker image
+      # - name: Push Docker image
+      #   run: docker push your_dockerhub_username/petstore-app:latest
