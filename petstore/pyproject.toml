@@ -1,0 +1,49 @@
+[tool.black]
+line-length = 120
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | petstore/app/database/migrations # Exclude alembic migrations
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_first_party = ["petstore"]
+skip_glob = ["petstore/app/database/migrations/*.py"]
+
+[tool.flake8]
+max-line-length = 120
+exclude = [
+    ".git",
+    "__pycache__",
+    "venv",
+    "petstore/app/database/migrations", # Exclude alembic migrations
+]
+ignore = [
+    "E203",  # Whitespace before ':'
+    "W503",  # Line break before binary operator
+]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov=petstore.app --cov-report=xml --cov-report=term-missing --cov-fail-under=80"
+testpaths = [
+    "petstore/app/tests"
+]
+asyncio_mode = "auto"
+xfail_strict = true
+filterwarnings = [
+    "ignore::DeprecationWarning:passlib.*", # Ignore passlib deprecation warnings for CryptContext
+]
