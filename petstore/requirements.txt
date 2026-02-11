@@ -1,0 +1,25 @@
+fastapi
+uvicorn[standard]
+pydantic>=2.0
+pydantic-settings>=2.0
+SQLAlchemy>=2.0
+asyncpg
+alembic
+passlib[bcrypt]
+python-jose[cryptography]
+tenacity
+python-dotenv
+flake8
+black
+isort
+pytest
+pytest-asyncio
+pytest-cov
+httpx
+fastapi-limiter
+redis[hiredis]
+openapi-spec-validator
+jsonschema
+python-json-logger
+sentry-sdk
+aiosqlite # For in-memory database in tests
